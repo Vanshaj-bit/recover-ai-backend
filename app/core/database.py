@@ -3,7 +3,11 @@ from sqlalchemy.orm import declarative_base
 from app.core.config import settings
 
 # Create the async engine connected to our Docker Postgres container
-engine = create_async_engine(settings.DATABASE_URL, echo=True)
+engine = create_async_engine(settings.DATABASE_URL, 
+                             echo=True,
+                             connect_args={"prepared_statement_cache_size": 0}
+)
+                        
 
 # Create a session factory
 AsyncSessionLocal = async_sessionmaker(
