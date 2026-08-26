@@ -4,8 +4,15 @@ import re
 import traceback
 import google.generativeai as genai
 
-# Configure your API Key (In production, move this to a .env file!)
+# Pull the API Key from the environment variables
 gcp_api_key = os.getenv("GCP_API_KEY")
+
+# Safety check: Warn immediately if the key is missing
+if not gcp_api_key:
+    raise ValueError("GCP_API_KEY environment variable is missing or not set!")
+
+# Tell the Google SDK to use the key we just loaded
+genai.configure(api_key=gcp_api_key)
 
 # We use Gemini 1.5 Flash for speed, forcing it to return strict JSON
 model = genai.GenerativeModel(
