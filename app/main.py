@@ -4,10 +4,13 @@ from fastapi.middleware.cors import CORSMiddleware
 # 1. Initialize FastAPI FIRST
 app = FastAPI()
 
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://recover-ai-frontend-r6310moh1-vanshaj2.vercel.app/"], 
+    # ⚠️ CRITICAL: No trailing slashes at the end of these URLs!
+    allow_origins=[
+        "https://recover-ai-frontend-r6310moh1-vanshaj2.vercel.app", 
+        "http://localhost:3000" 
+    ], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
