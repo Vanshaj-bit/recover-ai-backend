@@ -59,7 +59,7 @@ async def create_payment_order(
         razorpay_order_id=rzp_order["id"],
         amount=order_in.amount,
         currency=order_in.currency,
-        status="PENDING",
+        status="FAILED",
         metadata_obj=order_in.notes or {}
     )
     
@@ -68,12 +68,10 @@ async def create_payment_order(
     await db.refresh(new_payment)
     
     # 4. Trigger background Celery recovery email task
-    #send_payment_recovery_email.delay(
-    #   customer_email=customer.email,
-    #    customer_name=customer.name,
-    #    amount=new_payment.amount,
-    #    order_id=new_payment.razorpay_order_id
-    #)
+    send_payment_recovery_email(
+    customer_email=customer.email,
+    order_id=new_payment.razorpay_order_id
+)
     
     return new_payment
 
