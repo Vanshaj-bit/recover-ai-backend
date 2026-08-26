@@ -6,16 +6,16 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    # ⚠️ CRITICAL: No trailing slashes at the end of these URLs!
     allow_origins=[
-        "https://recover-ai-frontend-r6310moh1-vanshaj2.vercel.app", 
-        "http://localhost:3000" 
-    ], 
+        "http://localhost:3000",
+        "https://recover-ai-frontend.vercel.app",
+    ],
+    # This clever line automatically allows ANY of your Vercel preview branches!
+    allow_origin_regex=r"https://recover-ai-frontend-.*-vanshaj2\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # 2. Import ALL routers AFTER app is created
 from app.api.v1 import auth, customers, payments
 
