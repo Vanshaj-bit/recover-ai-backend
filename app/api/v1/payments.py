@@ -59,7 +59,7 @@ async def create_payment_order(
         razorpay_order_id=rzp_order["id"],
         amount=order_in.amount,
         currency=order_in.currency,
-        status="FAILED",
+        status="PENDING",
         metadata_obj=order_in.notes or {}
     )
     
