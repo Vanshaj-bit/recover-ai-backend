@@ -164,20 +164,19 @@ async def trigger_recovery_link(
 
     try:
         link_payload = {
-            "amount": payment.amount,
-            "currency": payment.currency or "INR",
+            "amount": int(payment.amount),
+            "currency": "INR",
             "accept_partial": False,
-            "description": f"Complete your failed payment for order #{payment.razorpay_order_id}",
+            "description": f"Recover transaction for order #{payment.razorpay_order_id}",
             "customer": {
-                "name": customer.name if customer else "Valued Customer",
-                "email": customer.email if customer else "customer@example.com",
-                "contact": customer.phone if customer and customer.phone else "9999999999"
+                "name": customer.name if customer and customer.name else "Customer",
+                "email": customer.email if customer and customer.email else "customer@example.com"
             },
             "notify": {
-                "sms": True,
+                "sms": False,
                 "email": True
             },
-            "reminder_enable": True,
+            "reminder_enable": False,
             "callback_url": "https://recover-ai-frontend.vercel.app/dashboard",
             "callback_method": "get"
         }
