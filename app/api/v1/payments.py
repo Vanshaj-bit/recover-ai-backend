@@ -67,12 +67,6 @@ async def create_payment_order(
     await db.commit()
     await db.refresh(new_payment)
     
-    # 4. Trigger background Celery recovery email task
-    #send_payment_recovery_email(
-    #customer_email=customer.email,
-    #order_id=new_payment.razorpay_order_id
-#)
-    
     return new_payment
 
 
@@ -119,13 +113,11 @@ async def razorpay_webhook(
                 payment_record.failure_reason = payment_entity.get("error_description")
                 
                 # --- PHASE 2: TRIGGER AI AGENT ---
-                # 1. Fetch the customer's name for the personalized message
                 cust_query = select(Customer).where(Customer.id == payment_record.customer_id)
                 cust_result = await db.execute(cust_query)
                 customer = cust_result.scalars().first()
                 customer_name = customer.name if customer else "Customer"
                 
-                # 2. Ask Gemini for the recovery strategy
                 ai_decision = await analyze_payment_failure(
                     customer_name=customer_name,
                     amount=payment_record.amount,
@@ -133,12 +125,12 @@ async def razorpay_webhook(
                     method=payment_record.payment_method or "unknown"
                 )
                 
-                # 3. Store the AI's JSON output directly into the payment's metadata column
                 payment_record.metadata_obj = ai_decision
             
             await db.commit()
             
     return {"status": "success"}
+
 
 @router.get("/force-patch")
 async def force_patch_db(db: AsyncSession = Depends(get_db)):
@@ -147,3 +139,56 @@ async def force_patch_db(db: AsyncSession = Depends(get_db)):
     await db.execute(text("ALTER TABLE payments ADD COLUMN failure_reason VARCHAR;"))
     await db.commit()
     return {"message": "Forced patch successful! Columns added."}
+
+
+@router.post("/recover/{payment_id}")
+async def trigger_recovery_link(
+    payment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_merchant: Merchant = Depends(get_current_merchant)
+):
+    """Programmatically generate a Razorpay Payment Link for a failed transaction."""
+    query = select(Payment).where(
+        Payment.id == payment_id,
+        Payment.merchant_id == current_merchant.id
+    )
+    result = await db.execute(query)
+    payment = result.scalars().first()
+    
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found.")
+
+    cust_query = select(Customer).where(Customer.id == payment.customer_id)
+    cust_result = await db.execute(cust_query)
+    customer = cust_result.scalars().first()
+
+    try:
+        link_payload = {
+            "amount": payment.amount,
+            "currency": payment.currency or "INR",
+            "accept_partial": False,
+            "description": f"Complete your failed payment for order #{payment.razorpay_order_id}",
+            "customer": {
+                "name": customer.name if customer else "Valued Customer",
+                "email": customer.email if customer else "customer@example.com",
+                "contact": customer.phone if customer and customer.phone else "9999999999"
+            },
+            "notify": {
+                "sms": True,
+                "email": True
+            },
+            "reminder_enable": True,
+            "callback_url": "https://recover-ai-frontend.vercel.app/dashboard",
+            "callback_method": "get"
+        }
+
+        response = razorpay_client.payment_link.create(link_payload)
+        
+        return {
+            "status": "success",
+            "payment_link_id": response.get("id"),
+            "short_url": response.get("short_url"),
+            "message": "Recovery link generated and dispatched successfully!"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
